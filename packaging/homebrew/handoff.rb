@@ -2,7 +2,7 @@ class Handoff < Formula
   desc "Hand off local coding-agent context between Codex and Claude Code"
   homepage "https://github.com/TStansel/handoff"
   url "https://github.com/TStansel/handoff/archive/refs/tags/v0.1.0.tar.gz"
-  sha256 "REPLACE_WITH_SOURCE_TARBALL_SHA256"
+  sha256 "9c5f21f446f68bd5f74bd74d8e3686de59d01009fe757f40b1858740288cca6d"
   license "MIT"
   head "https://github.com/TStansel/handoff.git", branch: "main"
 
