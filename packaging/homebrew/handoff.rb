@@ -1,13 +1,13 @@
 class Handoff < Formula
   desc "Hand off local coding-agent context between Codex and Claude Code"
   homepage "https://github.com/TStansel/handoff"
-  version "0.1.0"
+  version "0.1.1"
   license "MIT"
 
   on_macos do
     if Hardware::CPU.arm?
-      url "https://github.com/TStansel/handoff/releases/download/v0.1.0/handoff-v0.1.0-aarch64-apple-darwin.tar.gz"
-      sha256 "43589d52ca7c60b680569d4fd219b34d7598893e61726cdd1cb1359e3c67fcfbb56"
+      url "https://github.com/TStansel/handoff/releases/download/v0.1.1/handoff-v0.1.1-aarch64-apple-darwin.tar.gz"
+      sha256 "53ee7d76b042cf388ab8b2bca5ed56371f6aeb397c94f8eb83ec9cb8aaf4d4a0"
     else
       odie "Handoff does not currently publish an Intel macOS binary. Install from source with `cargo install --git https://github.com/TStansel/handoff`."
     end
@@ -15,8 +15,8 @@ class Handoff < Formula
 
   on_linux do
     if Hardware::CPU.intel?
-      url "https://github.com/TStansel/handoff/releases/download/v0.1.0/handoff-v0.1.0-x86_64-unknown-linux-gnu.tar.gz"
-      sha256 "7ed1e70127800b71f3df48cd9f8b64d6967f2027169ea5a6bae126cbe1d54c60"
+      url "https://github.com/TStansel/handoff/releases/download/v0.1.1/handoff-v0.1.1-x86_64-unknown-linux-gnu.tar.gz"
+      sha256 "5f721b63c7cf2c351c645131be30e6b228c8ea907c4b942f8955a32bdcb8e075"
     else
       odie "Handoff does not currently publish a Linux ARM binary. Install from source with `cargo install --git https://github.com/TStansel/handoff`."
     end
