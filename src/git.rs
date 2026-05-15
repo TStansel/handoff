@@ -6,6 +6,12 @@ pub struct Repo {
     pub root: PathBuf,
 }
 
+#[derive(Debug)]
+pub struct Workspace {
+    pub root: PathBuf,
+    pub git_root: Option<PathBuf>,
+}
+
 #[derive(Debug, Clone)]
 pub struct ChangedFile {
     pub status: String,
@@ -33,6 +39,16 @@ pub fn detect_repo() -> Result<Repo, String> {
     Ok(Repo {
         root: PathBuf::from(root),
     })
+}
+
+pub fn detect_workspace() -> Result<Workspace, String> {
+    let git_root = detect_repo().ok().map(|repo| repo.root);
+    let root = match &git_root {
+        Some(root) => root.clone(),
+        None => std::env::current_dir()
+            .map_err(|error| format!("failed to read current directory: {error}"))?,
+    };
+    Ok(Workspace { root, git_root })
 }
 
 impl GitState {

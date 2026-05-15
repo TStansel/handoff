@@ -1,5 +1,5 @@
 use crate::agents::{agent_display_name, detect_sessions, read_session_context, AgentName};
-use crate::git::{detect_repo, GitState};
+use crate::git::{detect_workspace, GitState};
 use crate::handoff::{build_packet, render_markdown, write_handoff, HandoffOptions};
 use crate::inject::inject_for_agent;
 use std::path::PathBuf;
@@ -105,16 +105,25 @@ fn parse_agent(value: &str) -> Result<AgentName, String> {
 }
 
 fn status(flags: Flags) -> Result<(), String> {
-    let repo = detect_repo()?;
-    let git = GitState::capture(&repo.root, false)?;
-    let codex = detect_sessions(AgentName::Codex, &repo.root)?;
-    let claude = detect_sessions(AgentName::Claude, &repo.root)?;
+    let workspace = detect_workspace()?;
+    let git = workspace
+        .git_root
+        .as_ref()
+        .and_then(|root| GitState::capture(root, false).ok());
+    let codex = detect_sessions(AgentName::Codex, &workspace.root)?;
+    let claude = detect_sessions(AgentName::Claude, &workspace.root)?;
     let latest = codex.iter().chain(claude.iter()).max_by_key(|s| s.modified);
-    let latest_handoff = repo.root.join(".agent-handoff/latest.md");
+    let latest_handoff = workspace.root.join(".agent-handoff/latest.md");
 
-    println!("Repo: {}", repo.root.display());
-    println!("Git branch: {}", git.branch.as_deref().unwrap_or("unknown"));
-    println!("Working tree: {}", git.working_tree);
+    println!("Workspace: {}", workspace.root.display());
+    match &git {
+        Some(git) => {
+            println!("Git repo: yes");
+            println!("Git branch: {}", git.branch.as_deref().unwrap_or("unknown"));
+            println!("Working tree: {}", git.working_tree);
+        }
+        None => println!("Git repo: no"),
+    }
     println!();
     println!("Detected agents:");
     println!("- codex: {} candidate sessions", codex.len());
@@ -154,16 +163,19 @@ fn print_sessions(label: &str, sessions: &[crate::agents::DetectedSession]) {
 }
 
 fn inject(target: AgentName, flags: Flags) -> Result<(), String> {
-    let repo = detect_repo()?;
+    let workspace = detect_workspace()?;
     let target_file = match target {
         AgentName::Codex => "AGENTS.md",
         AgentName::Claude => "CLAUDE.md",
     };
     if flags.dry_run {
-        println!("Would update {}", repo.root.join(target_file).display());
+        println!(
+            "Would update {}",
+            workspace.root.join(target_file).display()
+        );
         return Ok(());
     }
-    let path = inject_for_agent(&repo.root, target)?;
+    let path = inject_for_agent(&workspace.root, target)?;
     println!("Updated:\n{}", path.display());
     Ok(())
 }
@@ -174,13 +186,24 @@ fn pull(source: AgentName, target: Option<AgentName>, flags: Flags) -> Result<()
             "--include-diff requires --repo because full diffs are repository context".into(),
         );
     }
-    let repo = detect_repo()?;
+    let workspace = detect_workspace()?;
+    if flags.repo && workspace.git_root.is_none() {
+        return Err("--repo requires running inside a git repository".into());
+    }
     let git = if flags.repo {
-        Some(GitState::capture(&repo.root, flags.include_diff)?)
+        Some(GitState::capture(
+            workspace.git_root.as_deref().unwrap(),
+            flags.include_diff,
+        )?)
     } else {
         None
     };
-    let session_path = select_session(source, &repo.root, flags.session.clone(), flags.verbose)?;
+    let session_path = select_session(
+        source,
+        &workspace.root,
+        flags.session.clone(),
+        flags.verbose,
+    )?;
     let transcript = match &session_path {
         Some(path) => read_session_context(source, path)?,
         None => Default::default(),
@@ -188,12 +211,12 @@ fn pull(source: AgentName, target: Option<AgentName>, flags: Flags) -> Result<()
     let output = flags
         .output
         .clone()
-        .unwrap_or_else(|| repo.root.join(".agent-handoff/latest.md"));
+        .unwrap_or_else(|| workspace.root.join(".agent-handoff/latest.md"));
 
     let packet = build_packet(
         source,
         target,
-        &repo.root,
+        &workspace.root,
         git.as_ref(),
         session_path.as_deref(),
         &transcript,
@@ -212,7 +235,7 @@ fn pull(source: AgentName, target: Option<AgentName>, flags: Flags) -> Result<()
         include_raw: flags.include_raw,
         source_session: session_path.clone(),
     };
-    let written = write_handoff(&repo.root, source, target, &markdown, &write_options)?;
+    let written = write_handoff(&workspace.root, source, target, &markdown, &write_options)?;
 
     println!("Created handoff:\n{}", written.latest.display());
     if let Some(history) = written.history {
@@ -224,7 +247,7 @@ fn pull(source: AgentName, target: Option<AgentName>, flags: Flags) -> Result<()
 
     if let Some(target_agent) = target {
         if flags.inject {
-            let injected = inject_for_agent(&repo.root, target_agent)?;
+            let injected = inject_for_agent(&workspace.root, target_agent)?;
             println!("\nUpdated:\n{}", injected.display());
         }
         println!("\nStart {} with:\n", agent_display_name(target_agent));

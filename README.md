@@ -12,6 +12,8 @@ It reads recent local session context when available, writes a markdown handoff 
 
 No server. No dashboard. No hidden state mutation. Just a local handoff file your next agent can read.
 
+Git is optional for the default handoff flow. If the current directory is not inside a Git repository, Handoff writes relative to the current directory. The `--repo` flag requires a Git repository.
+
 ## Install
 
 For local development:
