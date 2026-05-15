@@ -27,6 +27,21 @@ After installing the binary on your `PATH`:
 handoff --help
 ```
 
+From source:
+
+```sh
+cargo install --path .
+```
+
+Planned Homebrew tap:
+
+```sh
+brew tap TStansel/handoff
+brew install handoff
+```
+
+The Homebrew formula template lives at `packaging/homebrew/handoff.rb`. After tagging a release, replace the template SHA with the source tarball SHA and copy it into a separate `homebrew-handoff` tap repository under `Formula/handoff.rb`.
+
 ## Demo
 
 ```sh
