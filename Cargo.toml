@@ -1,0 +1,15 @@
+[package]
+name = "handoff"
+version = "0.1.0"
+edition = "2021"
+description = "Local-first CLI for handing off coding-agent context between Codex and Claude Code."
+license = "MIT"
+
+[[bin]]
+name = "handoff"
+path = "src/main.rs"
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1
