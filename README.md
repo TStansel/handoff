@@ -14,13 +14,38 @@ No server. No dashboard. No hidden state mutation. Just a local handoff file you
 
 Git is optional for the default handoff flow. If the current directory is not inside a Git repository, Handoff writes relative to the current directory. The `--repo` flag requires a Git repository.
 
+## Demo
+
+<video src="./assets/handoff-codex-claude-demo.mp4" controls width="100%"></video>
+
+[Watch the demo video](./assets/handoff-codex-claude-demo.mp4)
+
+```sh
+# You were working in Codex and want to move to Claude Code
+handoff codex claude
+
+# Handoff writes:
+# .agent-handoff/latest.md
+#
+# Then start Claude:
+claude "Read .agent-handoff/latest.md and continue from the next recommended step. Before editing, inspect the listed files."
+```
+
+Reverse direction:
+
+```sh
+handoff claude codex
+
+codex "Read .agent-handoff/latest.md and continue from the next recommended step. Before editing, inspect the listed files."
+```
+
 ## Install
 
 For local development:
 
 ```sh
 cargo build
-cargo run -- status
+cargo run -- --help
 ```
 
 After installing the binary on your `PATH`:
@@ -56,33 +81,9 @@ x86_64-unknown-linux-gnu
 
 `v0.1.2` is the first release with Intel macOS support.
 
-## Demo
-
-<video src="https://github.com/TStansel/handoff/raw/main/assets/handoff-codex-claude-demo.mp4" controls width="100%"></video>
-
-```sh
-# You were working in Codex and want to move to Claude Code
-handoff codex claude
-
-# Handoff writes:
-# .agent-handoff/latest.md
-#
-# Then start Claude:
-claude "Read .agent-handoff/latest.md and continue from the next recommended step. Before editing, inspect the listed files."
-```
-
-Reverse direction:
-
-```sh
-handoff claude codex
-
-codex "Read .agent-handoff/latest.md and continue from the next recommended step. Before editing, inspect the listed files."
-```
-
 ## Commands
 
 ```sh
-handoff status
 handoff pull codex
 handoff pull claude
 handoff codex claude
@@ -151,7 +152,3 @@ Recommended `.gitignore` entry:
 ```gitignore
 .agent-handoff/raw/
 ```
-
-## Status
-
-This is an MVP. It uses defensive heuristics for Codex and Claude Code session discovery because local session formats are private implementation details and may change.
