@@ -54,7 +54,7 @@ x86_64-apple-darwin
 x86_64-unknown-linux-gnu
 ```
 
-Note: `v0.1.2` should be the first release with Intel macOS support. After the release assets are published, update the Homebrew formula with the new `v0.1.2` URLs and SHA-256 values.
+`v0.1.2` is the first release with Intel macOS support.
 
 ## Demo
 
