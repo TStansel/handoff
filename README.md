@@ -18,8 +18,6 @@ Git is optional for the default handoff flow. If the current directory is not in
 
 ![Demo of handoff codex claude](./assets/handoff-codex-claude-demo.gif)
 
-[Watch the MP4 version](./assets/handoff-codex-claude-demo.mp4)
-
 ```sh
 # You were working in Codex and want to move to Claude Code
 handoff codex claude
