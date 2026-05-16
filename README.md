@@ -58,6 +58,8 @@ x86_64-unknown-linux-gnu
 
 ## Demo
 
+<video src="https://github.com/TStansel/handoff/raw/main/assets/handoff-codex-claude-demo.mp4" controls width="100%"></video>
+
 ```sh
 # You were working in Codex and want to move to Claude Code
 handoff codex claude
