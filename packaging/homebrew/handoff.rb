@@ -9,7 +9,7 @@ class Handoff < Formula
       url "https://github.com/TStansel/handoff/releases/download/v0.1.1/handoff-v0.1.1-aarch64-apple-darwin.tar.gz"
       sha256 "53ee7d76b042cf388ab8b2bca5ed56371f6aeb397c94f8eb83ec9cb8aaf4d4a0"
     else
-      odie "Handoff does not currently publish an Intel macOS binary. Install from source with `cargo install --git https://github.com/TStansel/handoff`."
+      odie "Handoff v0.1.1 does not include an Intel macOS binary. The release workflow now builds x86_64-apple-darwin; update this formula with that asset after the next release."
     end
   end
 

@@ -35,14 +35,26 @@ From source:
 cargo install --path .
 ```
 
-Planned Homebrew tap:
+Homebrew tap:
 
 ```sh
 brew tap TStansel/handoff
 brew install handoff
 ```
 
-The Homebrew formula template lives at `packaging/homebrew/handoff.rb`. After tagging a release, replace the template SHA with the source tarball SHA and copy it into a separate `homebrew-handoff` tap repository under `Formula/handoff.rb`.
+The Homebrew formula installs prebuilt release binaries from GitHub. It does not build from source and does not install Rust through Homebrew.
+
+The formula template lives at `packaging/homebrew/handoff.rb`. After tagging a release, copy it into the separate `homebrew-handoff` tap repository under `Formula/handoff.rb` and update the binary URLs and SHA-256 values for each published target.
+
+The release workflow publishes binaries for:
+
+```text
+aarch64-apple-darwin
+x86_64-apple-darwin
+x86_64-unknown-linux-gnu
+```
+
+Note: `v0.1.2` should be the first release with Intel macOS support. After the release assets are published, update the Homebrew formula with the new `v0.1.2` URLs and SHA-256 values.
 
 ## Demo
 

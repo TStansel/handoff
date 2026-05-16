@@ -22,6 +22,10 @@ pub fn run(args: Vec<String>) -> Result<(), String> {
         print_help();
         return Ok(());
     }
+    if args[0] == "--version" || args[0] == "-V" {
+        println!("handoff {}", env!("CARGO_PKG_VERSION"));
+        return Ok(());
+    }
 
     match args[0].as_str() {
         "status" => status(parse_flags(&args[1..])?),
@@ -60,7 +64,7 @@ fn print_help() {
     println!(
         "Handoff - hand off local coding-agent context\n\n\
 Usage:\n  handoff status [--verbose]\n  handoff pull <codex|claude> [options]\n  handoff <codex|claude> <codex|claude> [options]\n  handoff inject <codex|claude> [--dry-run]\n\n\
-Options:\n  --dry-run           Print actions without writing files\n  --session <id|path> Use a specific source session id or file\n  --repo              Include git repo state in the handoff markdown\n  --include-raw       Copy raw source transcript into .agent-handoff/raw/\n  --include-diff      Include full git diff; requires --repo\n  --inject            Update AGENTS.md or CLAUDE.md with a handoff pointer\n  --history           Write a timestamped archive copy under .agent-handoff/history/\n  --output <path>     Write handoff to a custom path\n  --verbose           Show detection details\n  -h, --help          Show help"
+Options:\n  --dry-run           Print actions without writing files\n  --session <id|path> Use a specific source session id or file\n  --repo              Include git repo state in the handoff markdown\n  --include-raw       Copy raw source transcript into .agent-handoff/raw/\n  --include-diff      Include full git diff; requires --repo\n  --inject            Update AGENTS.md or CLAUDE.md with a handoff pointer\n  --history           Write a timestamped archive copy under .agent-handoff/history/\n  --output <path>     Write handoff to a custom path\n  --verbose           Show detection details\n  -h, --help          Show help\n  -V, --version       Show version"
     );
 }
 
