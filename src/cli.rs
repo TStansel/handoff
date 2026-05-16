@@ -2,6 +2,7 @@ use crate::agents::{agent_display_name, detect_sessions, read_session_context, A
 use crate::git::{detect_workspace, GitState};
 use crate::handoff::{build_packet, render_markdown, write_handoff, HandoffOptions};
 use crate::inject::inject_for_agent;
+use crate::update::maybe_print_update_notice;
 use std::path::PathBuf;
 
 #[derive(Debug, Default)]
@@ -260,6 +261,7 @@ fn pull(source: AgentName, target: Option<AgentName>, flags: Flags) -> Result<()
             target_agent.command_name(),
             packet.suggested_prompt
         );
+        maybe_print_update_notice();
     }
 
     Ok(())

@@ -129,6 +129,8 @@ Full diffs are also repo state, so `--include-diff` requires `--repo`:
 handoff codex claude --repo --include-diff
 ```
 
+When a cross-agent handoff completes, Handoff checks Homebrew for an available `handoff` upgrade if `brew` is on your `PATH`. It disables Homebrew auto-update for that check and stays silent unless an upgrade is available. Set `HANDOFF_NO_UPDATE_CHECK=1` to skip the check.
+
 Use `--session` when you want a specific session instead of the latest detected one. It accepts either a file path or a session id:
 
 ```sh

@@ -5,6 +5,7 @@ mod handoff;
 mod inject;
 mod paths;
 mod transcript;
+mod update;
 
 use std::process::ExitCode;
 
