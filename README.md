@@ -8,7 +8,7 @@ Handoff lets you hand off local coding context between agents like Codex and Cla
 handoff codex claude
 ```
 
-It reads recent local session context when available, writes a markdown handoff file, and prints the command to start the next agent. Pass `--repo` when you also want Git branch, commit, working tree, changed files, and snapshot details included.
+It reads recent local session context when available, writes a markdown handoff file, and starts the next agent. Pass `--repo` when you also want Git branch, commit, working tree, changed files, and snapshot details included.
 
 No server. No dashboard. No hidden state mutation. Just a local handoff file your next agent can read.
 
@@ -25,8 +25,7 @@ handoff codex claude
 # Handoff writes:
 # .agent-handoff/latest.md
 #
-# Then start Claude:
-claude "Read .agent-handoff/latest.md and continue from the next recommended step. Before editing, inspect the listed files."
+# Then Handoff starts Claude with the generated prompt.
 ```
 
 Reverse direction:
@@ -34,7 +33,15 @@ Reverse direction:
 ```sh
 handoff claude codex
 
-codex "Read .agent-handoff/latest.md and continue from the next recommended step. Before editing, inspect the listed files."
+# Handoff starts Codex with the generated prompt.
+```
+
+If you only want to prepare a handoff and choose the next agent yourself:
+
+```sh
+handoff claude
+
+# Handoff writes .agent-handoff/latest.md and prints a generic prompt for your agent.
 ```
 
 ## Install
@@ -84,6 +91,8 @@ x86_64-unknown-linux-gnu
 ```sh
 handoff pull codex
 handoff pull claude
+handoff codex
+handoff claude
 handoff codex claude
 handoff claude codex
 handoff inject claude

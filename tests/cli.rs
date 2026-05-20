@@ -40,15 +40,18 @@ fn run_with_fake_brew(args: &[&str], name: &str, brew_output: &str) -> Output {
     let bin = home.join("bin");
     fs::create_dir_all(&bin).unwrap();
 
-    let brew = bin.join("brew");
-    fs::write(
-        &brew,
-        format!("#!/bin/sh\nprintf '%s\\n' '{}'\n", brew_output),
-    )
-    .unwrap();
-    let mut permissions = fs::metadata(&brew).unwrap().permissions();
-    permissions.set_mode(0o755);
-    fs::set_permissions(&brew, permissions).unwrap();
+    write_executable(
+        &bin.join("brew"),
+        &format!("#!/bin/sh\nprintf '%s\\n' '{}'\n", brew_output),
+    );
+    write_executable(
+        &bin.join("codex"),
+        "#!/bin/sh\nprintf 'codex launched: %s\\n' \"$1\"\n",
+    );
+    write_executable(
+        &bin.join("claude"),
+        "#!/bin/sh\nprintf 'claude launched: %s\\n' \"$1\"\n",
+    );
 
     let path = std::env::var_os("PATH").unwrap_or_default();
     handoff()
@@ -62,6 +65,44 @@ fn run_with_fake_brew(args: &[&str], name: &str, brew_output: &str) -> Output {
         )
         .output()
         .unwrap()
+}
+
+#[cfg(unix)]
+fn run_with_fake_agents(args: &[&str], name: &str) -> Output {
+    let (home, repo) = workspace(name);
+    let bin = home.join("bin");
+    fs::create_dir_all(&bin).unwrap();
+
+    write_executable(
+        &bin.join("codex"),
+        "#!/bin/sh\nprintf 'codex launched: %s\\n' \"$1\"\n",
+    );
+    write_executable(
+        &bin.join("claude"),
+        "#!/bin/sh\nprintf 'claude launched: %s\\n' \"$1\"\n",
+    );
+
+    let path = std::env::var_os("PATH").unwrap_or_default();
+    handoff()
+        .args(args)
+        .current_dir(repo)
+        .env("HOME", home)
+        .env("USERPROFILE", "")
+        .env("HANDOFF_NO_UPDATE_CHECK", "1")
+        .env(
+            "PATH",
+            format!("{}:{}", bin.display(), path.to_string_lossy()),
+        )
+        .output()
+        .unwrap()
+}
+
+#[cfg(unix)]
+fn write_executable(path: &std::path::Path, contents: &str) {
+    fs::write(path, contents).unwrap();
+    let mut permissions = fs::metadata(path).unwrap().permissions();
+    permissions.set_mode(0o755);
+    fs::set_permissions(path, permissions).unwrap();
 }
 
 fn stdout(output: &Output) -> String {
@@ -121,6 +162,28 @@ fn cross_agent_dry_run_covers_both_directions() {
         assert!(output.status.success(), "{args:?}: {}", stderr(&output));
         assert!(stdout(&output).contains("# Handoff Packet"));
     }
+}
+
+#[test]
+fn source_only_handoff_prints_generic_prompt() {
+    let output = run(&["claude"], "source-only");
+    assert!(output.status.success(), "{}", stderr(&output));
+    let text = stdout(&output);
+    assert!(text.contains("Created handoff:"));
+    assert!(text.contains("Start your agent with this prompt:"));
+    assert!(text.contains("Read .agent-handoff/latest.md"));
+}
+
+#[cfg(unix)]
+#[test]
+fn cross_agent_handoff_launches_target_agent() {
+    let output = run_with_fake_agents(&["codex", "claude"], "auto-launch");
+    assert!(output.status.success(), "{}", stderr(&output));
+    let text = stdout(&output);
+    assert!(text.contains("Created handoff:"));
+    assert!(text.contains("Starting Claude with:"));
+    assert!(text.contains("claude \"Read .agent-handoff/latest.md"));
+    assert!(text.contains("claude launched: Read .agent-handoff/latest.md"));
 }
 
 #[test]
