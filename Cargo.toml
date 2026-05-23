@@ -1,8 +1,8 @@
 [package]
 name = "handoff"
-version = "0.1.4"
+version = "0.1.5"
 edition = "2021"
-description = "Local-first CLI for handing off coding-agent context between Codex and Claude Code."
+description = "Local-first CLI for handing off coding-agent context between AI agent CLIs."
 license = "MIT"
 
 [[bin]]
