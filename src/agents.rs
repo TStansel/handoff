@@ -20,13 +20,6 @@ impl AgentName {
             AgentName::Claude => "claude",
         }
     }
-
-    pub fn command_name(self) -> &'static str {
-        match self {
-            AgentName::Codex => "codex",
-            AgentName::Claude => "claude",
-        }
-    }
 }
 
 pub fn agent_display_name(agent: AgentName) -> &'static str {

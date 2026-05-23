@@ -81,6 +81,10 @@ fn run_with_fake_agents(args: &[&str], name: &str) -> Output {
         &bin.join("claude"),
         "#!/bin/sh\nprintf 'claude launched: %s\\n' \"$1\"\n",
     );
+    write_executable(
+        &bin.join("gemini"),
+        "#!/bin/sh\nprintf 'gemini launched: %s\\n' \"$1\"\n",
+    );
 
     let path = std::env::var_os("PATH").unwrap_or_default();
     handoff()
@@ -184,6 +188,18 @@ fn cross_agent_handoff_launches_target_agent() {
     assert!(text.contains("Starting Claude with:"));
     assert!(text.contains("claude \"Read .agent-handoff/latest.md"));
     assert!(text.contains("claude launched: Read .agent-handoff/latest.md"));
+}
+
+#[cfg(unix)]
+#[test]
+fn handoff_launches_arbitrary_target_agent() {
+    let output = run_with_fake_agents(&["claude", "gemini"], "arbitrary-launch");
+    assert!(output.status.success(), "{}", stderr(&output));
+    let text = stdout(&output);
+    assert!(text.contains("Created handoff:"));
+    assert!(text.contains("Starting gemini with:"));
+    assert!(text.contains("gemini \"Read .agent-handoff/latest.md"));
+    assert!(text.contains("gemini launched: Read .agent-handoff/latest.md"));
 }
 
 #[test]

@@ -9,7 +9,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 #[derive(Debug)]
 pub struct HandoffPacket {
     pub source: AgentName,
-    pub target: Option<AgentName>,
+    pub target: Option<String>,
     pub created: String,
     pub repo: PathBuf,
     pub include_repo: bool,
@@ -48,7 +48,7 @@ pub struct WrittenHandoff {
 
 pub fn build_packet(
     source: AgentName,
-    target: Option<AgentName>,
+    target: Option<&str>,
     repo: &Path,
     git: Option<&GitState>,
     source_session: Option<&Path>,
@@ -110,7 +110,7 @@ pub fn build_packet(
 
     HandoffPacket {
         source,
-        target,
+        target: target.map(str::to_string),
         created: now_string(),
         repo: repo.to_path_buf(),
         include_repo,
@@ -146,7 +146,7 @@ pub fn build_packet(
 }
 
 pub fn render_markdown(packet: &HandoffPacket) -> String {
-    let target = packet.target.map(|a| a.as_str()).unwrap_or("unspecified");
+    let target = packet.target.as_deref().unwrap_or("unspecified");
     let mut out = String::new();
     out.push_str("# Handoff Packet\n\n");
     out.push_str("## Metadata\n\n");
@@ -239,7 +239,7 @@ pub fn render_markdown(packet: &HandoffPacket) -> String {
 pub fn write_handoff(
     repo: &Path,
     source: AgentName,
-    target: Option<AgentName>,
+    target: Option<&str>,
     markdown: &str,
     options: &HandoffOptions,
 ) -> Result<WrittenHandoff, String> {
@@ -263,7 +263,9 @@ pub fn write_handoff(
             "{}-{}-to-{}.md",
             timestamp_slug(),
             source.as_str(),
-            target.map(|a| a.as_str()).unwrap_or("unspecified")
+            target
+                .map(sanitize_history_component)
+                .unwrap_or_else(|| "unspecified".into())
         );
         let history = history_dir.join(history_name);
         fs::write(&history, markdown)
@@ -296,6 +298,24 @@ pub fn write_handoff(
         history,
         raw,
     })
+}
+
+fn sanitize_history_component(value: &str) -> String {
+    let sanitized = value
+        .chars()
+        .map(|ch| {
+            if ch.is_ascii_alphanumeric() || ch == '-' || ch == '_' || ch == '.' {
+                ch
+            } else {
+                '-'
+            }
+        })
+        .collect::<String>();
+    if sanitized.is_empty() {
+        "target".into()
+    } else {
+        sanitized
+    }
 }
 
 fn current_state(packet: &HandoffPacket) -> String {
@@ -407,7 +427,7 @@ mod tests {
         };
         let packet = build_packet(
             AgentName::Codex,
-            Some(AgentName::Claude),
+            Some("claude"),
             Path::new("/tmp/repo"),
             Some(&git),
             None,

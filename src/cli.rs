@@ -35,22 +35,22 @@ pub fn run(args: Vec<String>) -> Result<(), String> {
             if args.len() < 2 {
                 return Err("usage: handoff pull <codex|claude>".into());
             }
-            let source = parse_agent(&args[1])?;
+            let source = parse_source_agent(&args[1])?;
             pull(source, None, parse_flags(&args[2..])?, false)
         }
         "inject" => {
             if args.len() < 2 {
                 return Err("usage: handoff inject <codex|claude>".into());
             }
-            let target = parse_agent(&args[1])?;
+            let target = parse_source_agent(&args[1])?;
             inject(target, parse_flags(&args[2..])?)
         }
         source if source == "codex" || source == "claude" => {
-            let source = parse_agent(source)?;
+            let source = parse_source_agent(source)?;
             let (target, flag_start) = match args.get(1) {
                 Some(value) if !value.starts_with("--") => {
-                    let target = parse_agent(value)?;
-                    if source == target {
+                    let target = parse_target_agent(value)?;
+                    if source.as_str() == target {
                         return Err("source and target agents must differ".into());
                     }
                     (Some(target), 2)
@@ -68,7 +68,7 @@ pub fn run(args: Vec<String>) -> Result<(), String> {
 fn print_help() {
     println!(
         "Handoff - hand off local coding-agent context\n\n\
-Usage:\n  handoff status [--verbose]\n  handoff pull <codex|claude> [options]\n  handoff <codex|claude> [options]\n  handoff <codex|claude> <codex|claude> [options]\n  handoff inject <codex|claude> [--dry-run]\n\n\
+Usage:\n  handoff status [--verbose]\n  handoff pull <codex|claude> [options]\n  handoff <codex|claude> [options]\n  handoff <codex|claude> <target-agent> [options]\n  handoff inject <codex|claude> [--dry-run]\n\n\
 Options:\n  --dry-run           Print actions without writing files\n  --session <id|path> Use a specific source session id or file\n  --repo              Include git repo state in the handoff markdown\n  --include-raw       Copy raw source transcript into .agent-handoff/raw/\n  --include-diff      Include full git diff; requires --repo\n  --inject            Update AGENTS.md or CLAUDE.md with a handoff pointer\n  --history           Write a timestamped archive copy under .agent-handoff/history/\n  --output <path>     Write handoff to a custom path\n  --verbose           Show detection details\n  -h, --help          Show help\n  -V, --version       Show version"
     );
 }
@@ -105,7 +105,7 @@ fn parse_flags(args: &[String]) -> Result<Flags, String> {
     Ok(flags)
 }
 
-fn parse_agent(value: &str) -> Result<AgentName, String> {
+fn parse_source_agent(value: &str) -> Result<AgentName, String> {
     match value {
         "codex" => Ok(AgentName::Codex),
         "claude" => Ok(AgentName::Claude),
@@ -113,23 +113,42 @@ fn parse_agent(value: &str) -> Result<AgentName, String> {
     }
 }
 
-fn run_agent(agent: AgentName, prompt: &str) -> Result<(), String> {
-    let status = Command::new(agent.command_name())
+fn parse_target_agent(value: &str) -> Result<String, String> {
+    let value = value.trim();
+    if value.is_empty() || value.starts_with('-') {
+        return Err("target agent must be a command name".into());
+    }
+    Ok(value.into())
+}
+
+fn parse_known_agent(value: &str) -> Option<AgentName> {
+    match value {
+        "codex" => Some(AgentName::Codex),
+        "claude" => Some(AgentName::Claude),
+        _ => None,
+    }
+}
+
+fn display_target_agent(value: &str) -> String {
+    parse_known_agent(value)
+        .map(agent_display_name)
+        .map(str::to_string)
+        .unwrap_or_else(|| value.to_string())
+}
+
+fn run_agent(command_name: &str, prompt: &str) -> Result<(), String> {
+    let status = Command::new(command_name)
         .arg(prompt)
         .stdin(Stdio::inherit())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()
-        .map_err(|error| format!("failed to start {}: {error}", agent.command_name()))?;
+        .map_err(|error| format!("failed to start {command_name}: {error}"))?;
 
     if status.success() {
         Ok(())
     } else {
-        Err(format!(
-            "{} exited with status {}",
-            agent.command_name(),
-            status
-        ))
+        Err(format!("{command_name} exited with status {status}"))
     }
 }
 
@@ -211,7 +230,7 @@ fn inject(target: AgentName, flags: Flags) -> Result<(), String> {
 
 fn pull(
     source: AgentName,
-    target: Option<AgentName>,
+    target: Option<String>,
     flags: Flags,
     print_generic_prompt: bool,
 ) -> Result<(), String> {
@@ -249,7 +268,7 @@ fn pull(
 
     let packet = build_packet(
         source,
-        target,
+        target.as_deref(),
         &workspace.root,
         git.as_ref(),
         session_path.as_deref(),
@@ -269,7 +288,13 @@ fn pull(
         include_raw: flags.include_raw,
         source_session: session_path.clone(),
     };
-    let written = write_handoff(&workspace.root, source, target, &markdown, &write_options)?;
+    let written = write_handoff(
+        &workspace.root,
+        source,
+        target.as_deref(),
+        &markdown,
+        &write_options,
+    )?;
 
     println!("Created handoff:\n{}", written.latest.display());
     if let Some(history) = written.history {
@@ -281,17 +306,16 @@ fn pull(
 
     if let Some(target_agent) = target {
         if flags.inject {
-            let injected = inject_for_agent(&workspace.root, target_agent)?;
+            let Some(known_target) = parse_known_agent(&target_agent) else {
+                return Err("--inject supports only codex or claude targets".into());
+            };
+            let injected = inject_for_agent(&workspace.root, known_target)?;
             println!("\nUpdated:\n{}", injected.display());
         }
-        println!("\nStarting {} with:\n", agent_display_name(target_agent));
-        println!(
-            "{} \"{}\"",
-            target_agent.command_name(),
-            packet.suggested_prompt
-        );
+        println!("\nStarting {} with:\n", display_target_agent(&target_agent));
+        println!("{} \"{}\"", target_agent, packet.suggested_prompt);
         maybe_print_update_notice();
-        run_agent(target_agent, &packet.suggested_prompt)?;
+        run_agent(&target_agent, &packet.suggested_prompt)?;
     } else if print_generic_prompt {
         println!("\nStart your agent with this prompt:\n");
         println!("{}", packet.suggested_prompt);

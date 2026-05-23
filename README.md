@@ -2,7 +2,7 @@
 
 Hit a coding-agent limit mid-refactor?
 
-Handoff lets you hand off local coding context between agents like Codex and Claude Code.
+Handoff lets you hand off local Codex or Claude Code context to another CLI agent.
 
 ```sh
 handoff codex claude
@@ -34,6 +34,15 @@ Reverse direction:
 handoff claude codex
 
 # Handoff starts Codex with the generated prompt.
+```
+
+You can also target any agent command on your `PATH`:
+
+```sh
+handoff codex gemini
+handoff claude aider
+
+# Handoff starts the target command with the generated prompt.
 ```
 
 If you only want to prepare a handoff and choose the next agent yourself:
@@ -95,6 +104,8 @@ handoff codex
 handoff claude
 handoff codex claude
 handoff claude codex
+handoff codex <target-agent>
+handoff claude <target-agent>
 handoff inject claude
 handoff inject codex
 ```
