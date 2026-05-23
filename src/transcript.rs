@@ -78,6 +78,7 @@ fn extract_string_values(agent: AgentName, line: &str) -> Vec<String> {
                 return Vec::new();
             }
         }
+        AgentName::CursorAgent => {}
     }
     if let Some(role) = extract_json_string_values_for_keys(line, &["role"]).first() {
         if !matches!(role.as_str(), "user" | "assistant") {

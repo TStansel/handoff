@@ -11,13 +11,18 @@ use std::time::{SystemTime, UNIX_EPOCH};
 pub enum AgentName {
     Codex,
     Claude,
+    CursorAgent,
 }
+
+pub const SUPPORTED_AGENT_CLIS: [AgentName; 3] =
+    [AgentName::Codex, AgentName::Claude, AgentName::CursorAgent];
 
 impl AgentName {
     pub fn as_str(self) -> &'static str {
         match self {
             AgentName::Codex => "codex",
             AgentName::Claude => "claude",
+            AgentName::CursorAgent => "agent",
         }
     }
 }
@@ -26,6 +31,7 @@ pub fn agent_display_name(agent: AgentName) -> &'static str {
     match agent {
         AgentName::Codex => "Codex",
         AgentName::Claude => "Claude",
+        AgentName::CursorAgent => "Cursor Agent",
     }
 }
 
@@ -53,6 +59,7 @@ pub fn detect_sessions(agent: AgentName, repo_path: &Path) -> Result<Vec<Detecte
     let roots = match agent {
         AgentName::Codex => vec![home.join(".codex").join("sessions")],
         AgentName::Claude => claude_search_roots(&home, repo_path),
+        AgentName::CursorAgent => vec![],
     };
 
     let mut sessions = Vec::new();
@@ -107,6 +114,7 @@ fn looks_like_session(agent: AgentName, path: &Path) -> bool {
             .and_then(|name| name.to_str())
             .is_some_and(|name| name.starts_with("rollout-") && name.ends_with(".jsonl")),
         AgentName::Claude => matches!(path.extension().and_then(|ext| ext.to_str()), Some("jsonl")),
+        AgentName::CursorAgent => false,
     }
 }
 

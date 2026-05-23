@@ -1,4 +1,6 @@
-use crate::agents::{agent_display_name, detect_sessions, read_session_context, AgentName};
+use crate::agents::{
+    agent_display_name, detect_sessions, read_session_context, AgentName, SUPPORTED_AGENT_CLIS,
+};
 use crate::git::{detect_workspace, GitState};
 use crate::handoff::{build_packet, render_markdown, write_handoff, HandoffOptions};
 use crate::inject::inject_for_agent;
@@ -33,19 +35,22 @@ pub fn run(args: Vec<String>) -> Result<(), String> {
         "status" => status(parse_flags(&args[1..])?),
         "pull" => {
             if args.len() < 2 {
-                return Err("usage: handoff pull <codex|claude>".into());
+                return Err(format!("usage: handoff pull <{}>", supported_agent_names()));
             }
             let source = parse_source_agent(&args[1])?;
             pull(source, None, parse_flags(&args[2..])?, false)
         }
         "inject" => {
             if args.len() < 2 {
-                return Err("usage: handoff inject <codex|claude>".into());
+                return Err(format!(
+                    "usage: handoff inject <{}>",
+                    supported_agent_names()
+                ));
             }
             let target = parse_source_agent(&args[1])?;
             inject(target, parse_flags(&args[2..])?)
         }
-        source if source == "codex" || source == "claude" => {
+        source if parse_source_agent(source).is_ok() => {
             let source = parse_source_agent(source)?;
             let (target, flag_start) = match args.get(1) {
                 Some(value) if !value.starts_with("--") => {
@@ -66,10 +71,11 @@ pub fn run(args: Vec<String>) -> Result<(), String> {
 }
 
 fn print_help() {
+    let supported = supported_agent_names();
     println!(
         "Handoff - hand off local coding-agent context\n\n\
-Usage:\n  handoff status [--verbose]\n  handoff pull <codex|claude> [options]\n  handoff <codex|claude> [options]\n  handoff <codex|claude> <target-agent> [options]\n  handoff inject <codex|claude> [--dry-run]\n\n\
-Options:\n  --dry-run           Print actions without writing files\n  --session <id|path> Use a specific source session id or file\n  --repo              Include git repo state in the handoff markdown\n  --include-raw       Copy raw source transcript into .agent-handoff/raw/\n  --include-diff      Include full git diff; requires --repo\n  --inject            Update AGENTS.md or CLAUDE.md with a handoff pointer\n  --history           Write a timestamped archive copy under .agent-handoff/history/\n  --output <path>     Write handoff to a custom path\n  --verbose           Show detection details\n  -h, --help          Show help\n  -V, --version       Show version"
+Usage:\n  handoff status [--verbose]\n  handoff pull <{supported}> [options]\n  handoff <{supported}> [options]\n  handoff <{supported}> <target-agent> [options]\n  handoff inject <{supported}> [--dry-run]\n\n\
+Options:\n  --dry-run           Print actions without writing files\n  --session <id|path> Use a specific source session id or file\n  --repo              Include git repo state in the handoff markdown\n  --include-raw       Copy raw source transcript into .agent-handoff/raw/\n  --include-diff      Include full git diff; requires --repo\n  --inject            Update the target agent context file with a handoff pointer\n  --history           Write a timestamped archive copy under .agent-handoff/history/\n  --output <path>     Write handoff to a custom path\n  --verbose           Show detection details\n  -h, --help          Show help\n  -V, --version       Show version"
     );
 }
 
@@ -106,11 +112,15 @@ fn parse_flags(args: &[String]) -> Result<Flags, String> {
 }
 
 fn parse_source_agent(value: &str) -> Result<AgentName, String> {
-    match value {
-        "codex" => Ok(AgentName::Codex),
-        "claude" => Ok(AgentName::Claude),
-        _ => Err(format!("unknown agent `{value}`; expected codex or claude")),
+    for agent in SUPPORTED_AGENT_CLIS {
+        if agent.as_str() == value {
+            return Ok(agent);
+        }
     }
+    Err(format!(
+        "unknown agent `{value}`; expected {}",
+        supported_agent_names()
+    ))
 }
 
 fn parse_target_agent(value: &str) -> Result<String, String> {
@@ -122,11 +132,7 @@ fn parse_target_agent(value: &str) -> Result<String, String> {
 }
 
 fn parse_known_agent(value: &str) -> Option<AgentName> {
-    match value {
-        "codex" => Some(AgentName::Codex),
-        "claude" => Some(AgentName::Claude),
-        _ => None,
-    }
+    parse_source_agent(value).ok()
 }
 
 fn display_target_agent(value: &str) -> String {
@@ -152,15 +158,28 @@ fn run_agent(command_name: &str, prompt: &str) -> Result<(), String> {
     }
 }
 
+fn supported_agent_names() -> String {
+    SUPPORTED_AGENT_CLIS
+        .iter()
+        .map(|agent| agent.as_str())
+        .collect::<Vec<_>>()
+        .join("|")
+}
+
 fn status(flags: Flags) -> Result<(), String> {
     let workspace = detect_workspace()?;
     let git = workspace
         .git_root
         .as_ref()
         .and_then(|root| GitState::capture(root, false).ok());
-    let codex = detect_sessions(AgentName::Codex, &workspace.root)?;
-    let claude = detect_sessions(AgentName::Claude, &workspace.root)?;
-    let latest = codex.iter().chain(claude.iter()).max_by_key(|s| s.modified);
+    let detected = SUPPORTED_AGENT_CLIS
+        .iter()
+        .map(|agent| detect_sessions(*agent, &workspace.root).map(|sessions| (*agent, sessions)))
+        .collect::<Result<Vec<_>, _>>()?;
+    let latest = detected
+        .iter()
+        .flat_map(|(_, sessions)| sessions.iter())
+        .max_by_key(|s| s.modified);
     let latest_handoff = workspace.root.join(".agent-handoff/latest.md");
 
     println!("Workspace: {}", workspace.root.display());
@@ -174,8 +193,13 @@ fn status(flags: Flags) -> Result<(), String> {
     }
     println!();
     println!("Detected agents:");
-    println!("- codex: {} candidate sessions", codex.len());
-    println!("- claude: {} candidate sessions", claude.len());
+    for (agent, sessions) in &detected {
+        println!(
+            "- {}: {} candidate sessions",
+            agent.as_str(),
+            sessions.len()
+        );
+    }
     if let Some(session) = latest {
         println!();
         println!("Latest likely source:");
@@ -192,8 +216,9 @@ fn status(flags: Flags) -> Result<(), String> {
     );
 
     if flags.verbose {
-        print_sessions("codex", &codex);
-        print_sessions("claude", &claude);
+        for (agent, sessions) in &detected {
+            print_sessions(agent.as_str(), sessions);
+        }
     }
 
     Ok(())
@@ -215,6 +240,7 @@ fn inject(target: AgentName, flags: Flags) -> Result<(), String> {
     let target_file = match target {
         AgentName::Codex => "AGENTS.md",
         AgentName::Claude => "CLAUDE.md",
+        AgentName::CursorAgent => "AGENTS.md",
     };
     if flags.dry_run {
         println!(
@@ -307,7 +333,10 @@ fn pull(
     if let Some(target_agent) = target {
         if flags.inject {
             let Some(known_target) = parse_known_agent(&target_agent) else {
-                return Err("--inject supports only codex or claude targets".into());
+                return Err(format!(
+                    "--inject supports only these targets: {}",
+                    supported_agent_names()
+                ));
             };
             let injected = inject_for_agent(&workspace.root, known_target)?;
             println!("\nUpdated:\n{}", injected.display());

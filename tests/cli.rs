@@ -52,6 +52,10 @@ fn run_with_fake_brew(args: &[&str], name: &str, brew_output: &str) -> Output {
         &bin.join("claude"),
         "#!/bin/sh\nprintf 'claude launched: %s\\n' \"$1\"\n",
     );
+    write_executable(
+        &bin.join("agent"),
+        "#!/bin/sh\nprintf 'agent launched: %s\\n' \"$1\"\n",
+    );
 
     let path = std::env::var_os("PATH").unwrap_or_default();
     handoff()
@@ -80,6 +84,10 @@ fn run_with_fake_agents(args: &[&str], name: &str) -> Output {
     write_executable(
         &bin.join("claude"),
         "#!/bin/sh\nprintf 'claude launched: %s\\n' \"$1\"\n",
+    );
+    write_executable(
+        &bin.join("agent"),
+        "#!/bin/sh\nprintf 'agent launched: %s\\n' \"$1\"\n",
     );
     write_executable(
         &bin.join("gemini"),
@@ -136,11 +144,12 @@ fn status_succeeds_without_git_or_sessions() {
     assert!(text.contains("Git repo: no"));
     assert!(text.contains("- codex: 0 candidate sessions"));
     assert!(text.contains("- claude: 0 candidate sessions"));
+    assert!(text.contains("- agent: 0 candidate sessions"));
 }
 
 #[test]
 fn inject_dry_run_covers_both_agents() {
-    for agent in ["codex", "claude"] {
+    for agent in ["codex", "claude", "agent"] {
         let output = run(&["inject", agent, "--dry-run"], agent);
         assert!(output.status.success(), "{agent}: {}", stderr(&output));
         assert!(stdout(&output).contains("Would update"));
@@ -149,7 +158,7 @@ fn inject_dry_run_covers_both_agents() {
 
 #[test]
 fn pull_dry_run_covers_both_sources() {
-    for source in ["codex", "claude"] {
+    for source in ["codex", "claude", "agent"] {
         let output = run(&["pull", source, "--dry-run"], source);
         assert!(output.status.success(), "{source}: {}", stderr(&output));
         assert!(stdout(&output).contains("# Handoff Packet"));
@@ -170,12 +179,14 @@ fn cross_agent_dry_run_covers_both_directions() {
 
 #[test]
 fn source_only_handoff_prints_generic_prompt() {
-    let output = run(&["claude"], "source-only");
-    assert!(output.status.success(), "{}", stderr(&output));
-    let text = stdout(&output);
-    assert!(text.contains("Created handoff:"));
-    assert!(text.contains("Start your agent with this prompt:"));
-    assert!(text.contains("Read .agent-handoff/latest.md"));
+    for source in ["claude", "agent"] {
+        let output = run(&[source], &format!("source-only-{source}"));
+        assert!(output.status.success(), "{source}: {}", stderr(&output));
+        let text = stdout(&output);
+        assert!(text.contains("Created handoff:"));
+        assert!(text.contains("Start your agent with this prompt:"));
+        assert!(text.contains("Read .agent-handoff/latest.md"));
+    }
 }
 
 #[cfg(unix)]
@@ -188,6 +199,18 @@ fn cross_agent_handoff_launches_target_agent() {
     assert!(text.contains("Starting Claude with:"));
     assert!(text.contains("claude \"Read .agent-handoff/latest.md"));
     assert!(text.contains("claude launched: Read .agent-handoff/latest.md"));
+}
+
+#[cfg(unix)]
+#[test]
+fn handoff_launches_cursor_agent_cli() {
+    let output = run_with_fake_agents(&["codex", "agent"], "cursor-agent-launch");
+    assert!(output.status.success(), "{}", stderr(&output));
+    let text = stdout(&output);
+    assert!(text.contains("Created handoff:"));
+    assert!(text.contains("Starting Cursor Agent with:"));
+    assert!(text.contains("agent \"Read .agent-handoff/latest.md"));
+    assert!(text.contains("agent launched: Read .agent-handoff/latest.md"));
 }
 
 #[cfg(unix)]

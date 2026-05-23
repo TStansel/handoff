@@ -9,6 +9,7 @@ pub fn inject_for_agent(repo: &Path, agent: AgentName) -> Result<PathBuf, String
     let file_name = match agent {
         AgentName::Codex => "AGENTS.md",
         AgentName::Claude => "CLAUDE.md",
+        AgentName::CursorAgent => "AGENTS.md",
     };
     let path = repo.join(file_name);
     let existing = fs::read_to_string(&path).unwrap_or_default();
