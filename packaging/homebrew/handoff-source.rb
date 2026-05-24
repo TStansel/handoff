@@ -1,8 +1,8 @@
 class HandoffSource < Formula
   desc "Hand off local coding-agent context between AI agent CLIs"
   homepage "https://github.com/TStansel/handoff"
-  url "https://github.com/TStansel/handoff/archive/refs/tags/v0.1.6.tar.gz"
-  sha256 "9a9a679d09dd0f56339836a997786ffca9172f17a5d16a1305a10f4746d9ac36"
+  url "https://github.com/TStansel/handoff/archive/refs/tags/v0.1.7.tar.gz"
+  sha256 "1ab34faeb1a7c13804606334981215d39fe6b57ccfc0394f4bdedb8fcc15c316"
   license "MIT"
 
   depends_on "rust" => :build

@@ -105,19 +105,45 @@ x86_64-unknown-linux-gnu
 
 ## Commands
 
+Inspect detected local sessions and the current handoff file:
+
+```sh
+handoff status
+handoff status --verbose
+```
+
+Print a handoff packet from a source agent without writing files:
+
 ```sh
 handoff pull codex
 handoff pull claude
 handoff pull agent
+handoff pull codex --repo
+handoff pull agent --session <id|path>
+```
+
+Create or refresh `.agent-handoff/latest.md` from a source agent:
+
+```sh
 handoff codex
 handoff claude
 handoff agent
+```
+
+Create a handoff and immediately start a target agent with the generated prompt:
+
+```sh
 handoff codex claude
 handoff claude codex
 handoff agent codex
 handoff codex <target-agent>
 handoff claude <target-agent>
 handoff agent <target-agent>
+```
+
+Inject a durable pointer into a target agent instruction file:
+
+```sh
 handoff inject claude
 handoff inject codex
 handoff inject agent
@@ -149,6 +175,18 @@ Add `--history` if you want a timestamped archive copy:
 
 ```sh
 handoff codex claude --history
+```
+
+Add `--include-raw` if you want the original detected source transcript copied into `.agent-handoff/raw/`:
+
+```sh
+handoff codex claude --include-raw
+```
+
+Use `--output` if you want to write somewhere other than `.agent-handoff/latest.md`:
+
+```sh
+handoff codex --output /tmp/handoff.md
 ```
 
 By default, generated packets omit Git repo details. Add `--repo` to include repo state:
@@ -189,5 +227,5 @@ Review `.agent-handoff/latest.md` before sharing a repo publicly. If you use `--
 Recommended `.gitignore` entry:
 
 ```gitignore
-.agent-handoff/raw/
+.agent-handoff/
 ```
