@@ -29,5 +29,7 @@ class Handoff < Formula
 
   test do
     assert_match version.to_s, shell_output("#{bin}/handoff --version")
+    assert_match "Detected agents:", shell_output("#{bin}/handoff status")
+    assert_match "# Handoff Packet", shell_output("#{bin}/handoff codex --dry-run")
   end
 end

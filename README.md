@@ -83,9 +83,15 @@ brew tap TStansel/handoff
 brew install handoff
 ```
 
-The Homebrew formula installs prebuilt release binaries from GitHub. It does not build from source and does not install Rust through Homebrew.
+The default tap formula installs prebuilt release binaries from GitHub. It does not build from source and does not install Rust through Homebrew.
 
-The formula template lives at `packaging/homebrew/handoff.rb`. After tagging a release, copy it into the separate `homebrew-handoff` tap repository under `Formula/handoff.rb` and update the binary URLs and SHA-256 values for each published target.
+The tap also includes a source-build formula for Homebrew Core preparation:
+
+```sh
+brew install TStansel/handoff/handoff-source
+```
+
+The binary formula template lives at `packaging/homebrew/handoff.rb`. The source-build formula template lives at `packaging/homebrew/handoff-source.rb`; for a future `homebrew/core` PR, use it as the starting point and rename the formula/class to `handoff`/`Handoff`. After tagging a release, copy updated formulae into the separate `homebrew-handoff` tap repository under `Formula/` and update the binary URLs and SHA-256 values for each published target.
 
 The release workflow publishes binaries for:
 
