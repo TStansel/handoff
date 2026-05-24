@@ -286,4 +286,19 @@ mod tests {
             .any(|message| message.contains("system prompt")));
         assert!(parsed.files.iter().any(|file| file == "src/main.rs"));
     }
+
+    #[test]
+    fn parses_cursor_agent_text_parts() {
+        let parsed = parse_transcript(
+            AgentName::CursorAgent,
+            r#"{"role":"user","message":{"content":[{"type":"text","text":"Please edit src/agents.rs and run cargo test?"}]}}
+{"role":"assistant","message":{"content":[{"type":"text","text":"cargo test\nThe change is in src/agents.rs."}]}}"#,
+        );
+        assert!(parsed.commands.contains(&"cargo test".to_string()));
+        assert!(parsed.files.iter().any(|file| file == "src/agents.rs"));
+        assert!(parsed
+            .questions
+            .iter()
+            .any(|question| question.contains("src/agents.rs")));
+    }
 }

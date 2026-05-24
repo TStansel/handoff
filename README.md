@@ -166,6 +166,14 @@ handoff codex claude --session 019e2966-f348-7252-9169-8a7ef9f580fe
 handoff codex claude --session ~/.codex/sessions/2026/05/14/rollout-2026-05-14T20-11-13-019e2966-f348-7252-9169-8a7ef9f580fe.jsonl
 ```
 
+Cursor Agent CLI transcripts are detected from local Cursor project storage when present:
+
+```text
+~/.cursor/projects/<project-key>/agent-transcripts/<session-id>/<session-id>.jsonl
+```
+
+Cursor can key sessions by the opened workspace directory, so Handoff checks the current repo, parent workspace keys, and then falls back to scanning `~/.cursor/projects`.
+
 ## Privacy
 
 Handoff is local-first. It reads local agent session files and writes markdown into the current repo. It does not upload transcript data.

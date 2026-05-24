@@ -1,6 +1,6 @@
 [package]
 name = "handoff"
-version = "0.1.5"
+version = "0.1.6"
 edition = "2021"
 description = "Local-first CLI for handing off coding-agent context between AI agent CLIs."
 license = "MIT"

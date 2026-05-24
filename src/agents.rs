@@ -59,7 +59,7 @@ pub fn detect_sessions(agent: AgentName, repo_path: &Path) -> Result<Vec<Detecte
     let roots = match agent {
         AgentName::Codex => vec![home.join(".codex").join("sessions")],
         AgentName::Claude => claude_search_roots(&home, repo_path),
-        AgentName::CursorAgent => vec![],
+        AgentName::CursorAgent => cursor_search_roots(&home, repo_path),
     };
 
     let mut sessions = Vec::new();
@@ -114,7 +114,12 @@ fn looks_like_session(agent: AgentName, path: &Path) -> bool {
             .and_then(|name| name.to_str())
             .is_some_and(|name| name.starts_with("rollout-") && name.ends_with(".jsonl")),
         AgentName::Claude => matches!(path.extension().and_then(|ext| ext.to_str()), Some("jsonl")),
-        AgentName::CursorAgent => false,
+        AgentName::CursorAgent => {
+            matches!(path.extension().and_then(|ext| ext.to_str()), Some("jsonl"))
+                && path
+                    .components()
+                    .any(|component| component.as_os_str() == "agent-transcripts")
+        }
     }
 }
 
@@ -141,15 +146,32 @@ fn score_repo_match(agent: AgentName, session_path: &Path, repo_path: &Path) -> 
     let file_name = session_path.to_string_lossy();
     let repo = repo_path.to_string_lossy();
     let basename = repo_path.file_name().and_then(|s| s.to_str()).unwrap_or("");
-    if agent == AgentName::Claude
-        && file_name.contains(
+    if agent == AgentName::Claude {
+        if file_name.contains(
             &encode_claude_project_key(repo_path)
                 .to_string_lossy()
                 .to_string(),
-        )
-    {
-        3
-    } else if file_name.contains(repo.as_ref()) {
+        ) {
+            return 3;
+        }
+    } else if agent == AgentName::CursorAgent {
+        let keys = cursor_project_keys(repo_path);
+        if keys
+            .first()
+            .is_some_and(|key| file_name.contains(&key.to_string_lossy().to_string()))
+        {
+            return 3;
+        }
+        if keys
+            .iter()
+            .skip(1)
+            .any(|key| file_name.contains(&key.to_string_lossy().to_string()))
+        {
+            return 2;
+        }
+    }
+
+    if file_name.contains(repo.as_ref()) {
         2
     } else if !basename.is_empty() && file_name.contains(basename) {
         1
@@ -178,9 +200,48 @@ fn claude_search_roots(home: &Path, repo_path: &Path) -> Vec<PathBuf> {
     ]
 }
 
+fn cursor_search_roots(home: &Path, repo_path: &Path) -> Vec<PathBuf> {
+    let projects = home.join(".cursor").join("projects");
+    let mut roots = cursor_project_keys(repo_path)
+        .into_iter()
+        .map(|key| projects.join(key))
+        .collect::<Vec<_>>();
+    roots.push(projects);
+    roots
+}
+
 fn encode_claude_project_key(path: &Path) -> PathBuf {
     let raw = path.to_string_lossy();
     let encoded = raw
+        .chars()
+        .map(|ch| {
+            if ch.is_ascii_alphanumeric() || ch == '.' {
+                ch
+            } else {
+                '-'
+            }
+        })
+        .collect::<String>();
+    PathBuf::from(encoded)
+}
+
+fn cursor_project_keys(path: &Path) -> Vec<PathBuf> {
+    let mut keys = Vec::new();
+    let mut current = Some(path);
+    while let Some(path) = current {
+        let key = encode_cursor_project_key(path);
+        if !key.as_os_str().is_empty() && !keys.contains(&key) {
+            keys.push(key);
+        }
+        current = path.parent();
+    }
+    keys
+}
+
+fn encode_cursor_project_key(path: &Path) -> PathBuf {
+    let raw = path.to_string_lossy();
+    let encoded = raw
+        .trim_start_matches('/')
         .chars()
         .map(|ch| {
             if ch.is_ascii_alphanumeric() || ch == '.' {
@@ -209,6 +270,35 @@ mod tests {
             encode_claude_project_key(Path::new("/Users/thomas/projects/handoff")),
             PathBuf::from("-Users-thomas-projects-handoff")
         );
+    }
+
+    #[test]
+    fn encodes_cursor_project_key_like_local_project_path() {
+        assert_eq!(
+            encode_cursor_project_key(Path::new("/home/thomas/Desktop/handoff")),
+            PathBuf::from("home-thomas-Desktop-handoff")
+        );
+    }
+
+    #[test]
+    fn cursor_project_keys_include_ancestor_workspaces() {
+        let keys = cursor_project_keys(Path::new("/home/thomas/Desktop/handoff"));
+        assert_eq!(keys[0], PathBuf::from("home-thomas-Desktop-handoff"));
+        assert!(keys.contains(&PathBuf::from("home-thomas-Desktop")));
+    }
+
+    #[test]
+    fn detects_cursor_agent_transcript_jsonl() {
+        assert!(looks_like_session(
+            AgentName::CursorAgent,
+            Path::new(
+                "/home/thomas/.cursor/projects/home-thomas-Desktop/agent-transcripts/id/id.jsonl"
+            )
+        ));
+        assert!(!looks_like_session(
+            AgentName::CursorAgent,
+            Path::new("/home/thomas/.cursor/projects/home-thomas-Desktop/other.jsonl")
+        ));
     }
 
     #[test]
